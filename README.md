@@ -6,7 +6,12 @@ Medidor sonoro que integra pH-metro, termômetro e identificador de soluções e
 </p>
 
 
-##DFPlayer Mini
+## DFPlayer Mini
 
-Contras
+### Prós
+  * Nenhum
+  
+### Contras
   * Utiliza um metódo de indexação oculto, que pode depender de data de criação, tamanho ou nome, ninguém sabe
+  * Não presta
+  * Fala sério, é impossível usar essa coisa
