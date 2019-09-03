@@ -3,9 +3,10 @@ import os
   
 class DFPlayerMiniAudioGen:
     
-    def __init__(self, language = 'pt-br'):
+    def __init__(self, language = 'pt-br', audioIndex = 0):
         self.language = language
         self.audios = []
+        self.audioIndex = audioIndex
     
     def putTexts(self,texts):
         self.audios.extend(texts)
@@ -15,14 +16,15 @@ class DFPlayerMiniAudioGen:
             
     def generateFiles(self,path):
         for i in range(len(self.audios)):
-            myobj = gTTS(text=self.audios[i], lang=self.language, slow=False) 
-            filename = path +  str(i).zfill(4) + '.mp3'
-            myobj.save(filename) 
+            audioTTS = gTTS(text=self.audios[i], lang=self.language, slow=False) 
+            filename = path +  str(i+self.audioIndex).zfill(4) + '.mp3'
+            audioTTS.save(filename) 
             print(filename + '|' + self.audios[i])
 
 
 falas = ['e','ponto','conduz','não conduz','Medição de PH','Medição de temperatura','Identificador de soluções eletrolíticas','O ph é','A temperatura é','Graus Celsius','Dispositivo pronto para uso']
 path = 'C:\\Users\\victo\\Desktop\\Files\\'
+
 
 audioGen = DFPlayerMiniAudioGen()
 audioGen.putNumbers(list(range(0,200)))
