@@ -11,32 +11,32 @@
 //                          Modos de operação                               //
 /////////////////////////////////////////////////////////////////////////////
 
-uint8_t modo;
+uint8_t modo = 1;
 #define MODO_PH 0
 #define MODO_TEMP 1
-#define MODO_IDSOL 1
+#define MODO_IDSOL 2
 
 ///////////////////////////////////////////////////////////////////////////////
 //                   Endereçamento dos Áudios                               //
 /////////////////////////////////////////////////////////////////////////////
 
 
-#define AUDIO_E 1000
-#define AUDIO_PONTO 1001
+#define AUDIO_E 200
+#define AUDIO_PONTO 201
 
-#define AUDIO_CONDUZ 
-#define AUDIO_NAO_CONDUZ
+#define AUDIO_CONDUZ 202
+#define AUDIO_NAO_CONDUZ 203
 
-#define AUDIO_PH_INIT 1002
+#define AUDIO_PH_SELECT 204
+#define AUDIO_TEMP_SELECT 205
+#define AUDIO_IDSOL_SELECT 206
 
-#define AUDIO_TEMP_INIT 1003
-#define AUDIO_TEMP_FIM 1004
+#define AUDIO_PH_INIT 207
+#define AUDIO_TEMP_INIT 208
+#define AUDIO_TEMP_FIM 209
+#define AUDIO_INIT_OK 210
 
-#define AUDIO_INIT_OK 1006
-
-#define AUDIO_PH_SELECT
-#define AUDIO_TEMP_SELECT
-#define AUDIO_IDSOL_SELECT
+#define AUDIO_ZERO 211
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -49,10 +49,10 @@ uint8_t modo;
 #define IDSOL_PIN 12 //Digital IN
 
 //Botões
-#define BT_PH_PIN
-#define BT_TEMP_PIN
-#define BT_IDSOL_PIN
-#define BT_PLAY_PIN
+#define BT_PH_PIN 10
+#define BT_TEMP_PIN 11
+#define BT_IDSOL_PIN 12
+#define BT_PLAY_PIN 13
 
 //LCD
 #define LCD_RS 8
@@ -60,29 +60,29 @@ uint8_t modo;
 #define LCD_D4 4
 #define LCD_D5 5
 #define LCD_D6 6
-#define LCD_D3 7
+#define LCD_D7 7
 
 //DFPlayer
 #define DFPLAYER_RX 3
 #define DFPLAYER_TX 2
-#define DFPLAYER_BUSY
+#define DFPLAYER_BUSY_PIN A3
 
 //LED indicador de funcionamento
-#define LED_PIN
+#define LED_PIN LED_BUILTIN 
 
 ///////////////////////////////////////////////////////////////////////////////
 //                          Variáveis Globais                               //
 /////////////////////////////////////////////////////////////////////////////
 
 float temp;
-float pH;
+float ph;
 bool conduz;
 
 ///////////////////////////////////////////////////////////////////////////////
 //                    Instâncias de objetos auxiliares                      //
 /////////////////////////////////////////////////////////////////////////////
 
-Thermistor temp(TERM_PIN);
+Thermistor term(TERM_PIN);
 LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
 SoftwareSerial softwareSerial(DFPLAYER_RX,DFPLAYER_TX);
@@ -92,16 +92,38 @@ DFRobotDFPlayerMini player;
 //                          Funções de Leitura                              //
 /////////////////////////////////////////////////////////////////////////////
 
-
-bool estaConduzindo(){
-    return digitalRead(ID_SOL_PIN);
+float precisaoDecimal(float f, int p = 4){
+  int esc = 100*p;
+  return round(esc*f)/(esc);
 }
 
+bool estaConduzindo(){
+    return digitalRead(IDSOL_PIN);
+}
+
+#define TEMP_MEDIA_MOVEL_COUNT 100
+
+float temps[TEMP_MEDIA_MOVEL_COUNT];
+int tempIndex = 0;
+float medTemp=0;
+
 float lerTemperatura(){
-    return temp.getTemp();
+    float nTemp = term.getTemp();
+
+    medTemp += (nTemp-temps[tempIndex])/TEMP_MEDIA_MOVEL_COUNT;
+    temps[tempIndex] = nTemp;
+    tempIndex = (tempIndex+1)%TEMP_MEDIA_MOVEL_COUNT;
+    
+    return medTemp;        
 }
 
 float lerPH(){}
+
+void atualizaSensores(){
+    ph = lerPH();
+    temp = lerTemperatura();
+    conduz = estaConduzindo();
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 //                         Funções de exibição                              //
@@ -109,16 +131,15 @@ float lerPH(){}
 
 //Espera indefinidamente até que o DFPlayer esteja initializado
 void inicializaAudio(){
-    Serial.print("Incializando");
     softwareSerial.begin(9600);
     while(!player.begin(softwareSerial)){
         Serial.print(".");
         digitalWrite(LED_PIN,HIGH);
-        delay(250)
+        delay(250);
         digitalWrite(LED_PIN,LOW);
-        delay(250)
+        delay(250);
+
     }
-    Serial.println();
     digitalWrite(LED_PIN,LOW);
     
 
@@ -126,7 +147,6 @@ void inicializaAudio(){
     player.volume(30);
     player.EQ(0);
 
-    Serial.println(player.readFileCounts(DFPLAYER_DEVICE_SD));
 }
 
 //Atualiza os valores do display
@@ -134,57 +154,62 @@ void atualizaLCD(){
     lcd.setCursor(0,0);
     lcd.print("pH: ");
     lcd.setCursor(5,0);
-    lcd.print(pH);
+    lcd.print(ph);
 
     lcd.setCursor(0,1);
     lcd.print("Temp.: ");
     lcd.setCursor(7,1);
-    lcd.print(temperatura);
+    lcd.print(temp);
+}
+
+int correcaoIndice(int i){
+  if (i>40)
+    i++;
+  
+  return (171+i)%212;
 }
 
 //Reproduz um áudio e espera seu término (Sincronizado)
 void falarSync(int audioID){
+    audioID = correcaoIndice(audioID);
+    
     player.play(audioID);
-    while(digitalRead(DFPLAYER_BUSY_PIN)){}
+    while(!digitalRead(DFPLAYER_BUSY_PIN)){
+      atualizaSensores();
+      atualizaLCD();
+      Serial.println(".");
+    }
+    
+    unsigned long previousMillis = millis();
+    unsigned long currentMillis = millis();
+    while (currentMillis - previousMillis <= 2000) {
+      currentMillis = millis();
+      
+      atualizaSensores();
+      atualizaLCD();
+    }
+
     return;
 }
 
 //
 void falarFloat(float v){
+    
     //   Divide o valor de float em duas strings
     //   contendo partes inteira e decimal
     String s = String(v,2);
     int posPonto = s.indexOf('.');
     String inteiro = s.substring(0,posPonto);
     String decimal = s.substring(posPonto+1);
-
-    falarInteiro(inteiro);
-    player.play(AUDIO_PONTO);
-    falarInteiro(decimal);
-}
-
-void falarInteiro(String inteiro){
-    if(inteiro.toInt() <= 20)
-        falarSync(inteiro.toInt());
-    else if(inteiro.length() == 3){
-        if(inteiro = "100")
-            falarSync(AUDIO_CEM);
-        else{
-            int centena = (inteiro[0] - '0');
-            int dezena  = (inteiro[1] - '0');
-            int unidade = (inteiro[2] - '0');
-
-            falarSync(centena*100);
-            if(dezena != 0)
-                falarSync(dezena*10);
-            if(unidade != 0)
-                falarSync(unidade);
-        }
-    }
-    else if(inteiro.length() == 2){
-        falarSync((inteiro[0] - '0')*10);
-        falarSync(inteiro[1] - '0');
-    }
+    Serial.println(v);
+    Serial.println(inteiro.toInt());
+    Serial.println(decimal.toInt());
+    
+    //falarInteiro(inteiro);
+    falarSync(inteiro.toInt());
+    falarSync(AUDIO_PONTO);
+    falarSync(decimal.toInt());
+    //falarInteiro(decimal);
 }
 
 void falarConduz(){
@@ -200,21 +225,27 @@ void falarConduz(){
 
 
 void setup() {
-    pinMode(ID_SOL_PIN,INPUT_PULLUP);
-    pinMode(BT_PH_PIN,INPUT_PULLDOWN);
-    pinMode(BT_TEMP_PIN,INPUT_PULLDOWN);
-    pinMode(BT_IDSOL_PIN,INPUT_PULLDOWN);
-    pinMode(BT_PLAY_PIN,INPUT_PULLDOWN);
-    pinMode(LED_PIN,OUTPUT);
-
+    
     Serial.begin(115200);
+    Serial.print("Incializando...");
+    
+    pinMode(IDSOL_PIN,INPUT_PULLUP);
+    pinMode(BT_PH_PIN,INPUT_PULLUP);
+    pinMode(BT_TEMP_PIN,INPUT_PULLUP);
+    pinMode(BT_IDSOL_PIN,INPUT_PULLUP);
+    pinMode(BT_PLAY_PIN,INPUT_PULLUP);
+    pinMode(LED_PIN,OUTPUT);
 
     lcd.begin(16,2);
 
     inicializaAudio();
+    
         
     delay(1000);
     digitalWrite(LED_PIN,HIGH);
+    
+    falarSync(AUDIO_INIT_OK);
+    Serial.println("Inicializado");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -223,26 +254,28 @@ void setup() {
 
 
 void loop() { 
-    pH = lerPH();
-    temp = lerTemperatura();
-    conduz = estaConduzindo();
-
+    atualizaSensores();
     atualizaLCD();
 
-    if(digitalRead(BT_PH_PIN)){
+    if(!digitalRead(BT_PH_PIN)){
         modo = MODO_PH;
+        Serial.println("PH");
         falarSync(AUDIO_PH_SELECT);
     }
-    else if(digitalRead(BT_TEMP_PIN)){
+    else if(!digitalRead(BT_TEMP_PIN)){
         modo = MODO_TEMP;
+        Serial.println("TEMP");
         falarSync(AUDIO_TEMP_SELECT);
     }
-    else if(digitalRead(BT_IDSOL_PIN)){
+    else if(!digitalRead(BT_IDSOL_PIN)){
         modo = MODO_IDSOL;
+        Serial.println("IDSOL");
         falarSync(AUDIO_IDSOL_SELECT);
     }
-    else if(digitalRead(BT_PLAY_PIN)){
+    else if(!digitalRead(BT_PLAY_PIN)){
         digitalWrite(LED_PIN,LOW);
+
+        Serial.println("PLAY");
 
         switch (modo){
         case MODO_PH:
@@ -260,9 +293,9 @@ void loop() {
         default:
             break;
         }
+        
 
-        digitalWrite(LED_PIN,HIGH);
+        digitalWrite(LED_PIN, HIGH);
     }
-    
     
 }
