@@ -46,7 +46,7 @@ uint8_t modo = 1;
 //Sensores
 #define PH_PIN A1 //Analog IN
 #define TERM_PIN A0 //Analog IN
-#define IDSOL_PIN 12 //Digital IN
+#define IDSOL_PIN A4 //Digital IN
 
 //Botões
 #define BT_PH_PIN 10
@@ -71,14 +71,6 @@ uint8_t modo = 1;
 #define LED_PIN LED_BUILTIN 
 
 ///////////////////////////////////////////////////////////////////////////////
-//                          Variáveis Globais                               //
-/////////////////////////////////////////////////////////////////////////////
-
-float temp;
-float ph;
-bool conduz;
-
-///////////////////////////////////////////////////////////////////////////////
 //                    Instâncias de objetos auxiliares                      //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -88,36 +80,68 @@ LiquidCrystal lcd(LCD_RS, LCD_RW, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 SoftwareSerial softwareSerial(DFPLAYER_RX,DFPLAYER_TX);
 DFRobotDFPlayerMini player;
 
+
+///////////////////////////////////////////////////////////////////////////////
+//                         Filtros e Amostragem                             //
+/////////////////////////////////////////////////////////////////////////////
+
+class SMA{
+private:
+    int size;
+
+    float* samples;
+    int index;
+    float med;
+
+public:
+    SMA(int _size):
+        size(_size),
+        samples(new float[size]),
+        index(0),
+        med(0){
+            for(int i = 0; i < size; i++){
+                samples[i] = 0;
+            }
+        }
+    ~SMA(){
+        delete[] samples;
+    }
+
+    float updateSamples(float nSample){
+        med += (nSample-samples[index])/size;
+        samples[index] = nSample;
+        index = (index+1)%size;
+
+        return med;
+    }
+}
+
+#define TEMP_MEDIA_MOVEL_COUNT 100
+#define PH_MEDIA_MOVEL_COUNT 50
+
+filtroTemp = SMA(TEMP_MEDIA_MOVEL_COUNT);
+filtroPH = SMA(PH_MEDIA_MOVEL_COUNT);
+
 ///////////////////////////////////////////////////////////////////////////////
 //                          Funções de Leitura                              //
 /////////////////////////////////////////////////////////////////////////////
 
-float precisaoDecimal(float f, int p = 4){
-  int esc = 100*p;
-  return round(esc*f)/(esc);
-}
+float temp;
+float ph;
+bool conduz;
+
 
 bool estaConduzindo(){
-    return digitalRead(IDSOL_PIN);
+    return !digitalRead(IDSOL_PIN);
 }
-
-#define TEMP_MEDIA_MOVEL_COUNT 100
-
-float temps[TEMP_MEDIA_MOVEL_COUNT];
-int tempIndex = 0;
-float medTemp=0;
 
 float lerTemperatura(){
-    float nTemp = term.getTemp();
-
-    medTemp += (nTemp-temps[tempIndex])/TEMP_MEDIA_MOVEL_COUNT;
-    temps[tempIndex] = nTemp;
-    tempIndex = (tempIndex+1)%TEMP_MEDIA_MOVEL_COUNT;
-    
-    return medTemp;        
+    return filtroTemp.updateSamples(term.getTemp());
 }
 
-float lerPH(){}
+float lerPH(){
+    return filtroPH.updateSamples(34.16 - (0.03315*analogRead(PH_PIN));
+}
 
 void atualizaSensores(){
     ph = lerPH();
@@ -163,10 +187,10 @@ void atualizaLCD(){
 }
 
 int correcaoIndice(int i){
-  if (i>40)
-    i++;
+    if (i>40)
+        i++;
   
-  return (171+i)%212;
+    return (171+i)%212;
 }
 
 //Reproduz um áudio e espera seu término (Sincronizado)
@@ -205,11 +229,9 @@ void falarFloat(float v){
     Serial.println(inteiro.toInt());
     Serial.println(decimal.toInt());
     
-    //falarInteiro(inteiro);
     falarSync(inteiro.toInt());
     falarSync(AUDIO_PONTO);
     falarSync(decimal.toInt());
-    //falarInteiro(decimal);
 }
 
 void falarConduz(){
