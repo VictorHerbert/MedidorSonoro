@@ -279,21 +279,6 @@ void loop() {
     atualizaSensores();
     atualizaLCD();
 
-    if(!digitalRead(BT_PH_PIN)){
-        modo = MODO_PH;
-        Serial.println("PH");
-        falarSync(AUDIO_PH_SELECT);
-    }
-    else if(!digitalRead(BT_TEMP_PIN)){
-        modo = MODO_TEMP;
-        Serial.println("TEMP");
-        falarSync(AUDIO_TEMP_SELECT);
-    }
-    else if(!digitalRead(BT_IDSOL_PIN)){
-        modo = MODO_IDSOL;
-        Serial.println("IDSOL");
-        falarSync(AUDIO_IDSOL_SELECT);
-    }
     else if(!digitalRead(BT_PLAY_PIN)){
         digitalWrite(LED_PIN,LOW);
 
