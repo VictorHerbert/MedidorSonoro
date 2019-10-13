@@ -15,6 +15,7 @@ uint8_t modo = 1;
 #define MODO_PH 0
 #define MODO_TEMP 1
 #define MODO_IDSOL 2
+#define MODO_PLAY 3
 
 ///////////////////////////////////////////////////////////////////////////////
 //                   Endereçamento dos Áudios                               //
@@ -53,6 +54,8 @@ uint8_t modo = 1;
 #define BT_TEMP_PIN 11
 #define BT_IDSOL_PIN 12
 #define BT_PLAY_PIN 13
+
+#define BT_PIN A5
 
 //LCD
 #define LCD_RS 8
@@ -114,13 +117,13 @@ public:
 
         return med;
     }
-}
+};
 
 #define TEMP_MEDIA_MOVEL_COUNT 100
 #define PH_MEDIA_MOVEL_COUNT 50
 
-filtroTemp = SMA(TEMP_MEDIA_MOVEL_COUNT);
-filtroPH = SMA(PH_MEDIA_MOVEL_COUNT);
+SMA filtroTemp (TEMP_MEDIA_MOVEL_COUNT);
+SMA filtroPH (PH_MEDIA_MOVEL_COUNT);
 
 ///////////////////////////////////////////////////////////////////////////////
 //                          Funções de Leitura                              //
@@ -140,7 +143,7 @@ float lerTemperatura(){
 }
 
 float lerPH(){
-    return filtroPH.updateSamples(34.16 - (0.03315*analogRead(PH_PIN));
+    return filtroPH.updateSamples(34.16 - (0.03315*analogRead(PH_PIN)));
 }
 
 void atualizaSensores(){
@@ -173,8 +176,18 @@ void inicializaAudio(){
 
 }
 
+unsigned long previousLCDMillis = millis();
+unsigned long currentLCDMillis = millis();
+
+#define LCD_update_time 1000
+
 //Atualiza os valores do display
 void atualizaLCD(){
+    currentLCDMillis = millis();
+    if(currentLCDMillis - previousLCDMillis <= LCD_update_time) return;
+    
+    previousLCDMillis = millis();
+    
     lcd.setCursor(0,0);
     lcd.print("pH: ");
     lcd.setCursor(5,0);
@@ -216,7 +229,7 @@ void falarSync(int audioID){
     return;
 }
 
-//
+
 void falarFloat(float v){
     
     //   Divide o valor de float em duas strings
@@ -266,19 +279,38 @@ void setup() {
     delay(1000);
     digitalWrite(LED_PIN,HIGH);
     
-    falarSync(AUDIO_INIT_OK);
+    //falarSync(AUDIO_INIT_OK);
+    player.play(AUDIO_INIT_OK);
     Serial.println("Inicializado");
+    
 }
+
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //                          Rotina principal                                //
 /////////////////////////////////////////////////////////////////////////////
 
-
 void loop() { 
+    
     atualizaSensores();
     atualizaLCD();
-
+    
+    if(!digitalRead(BT_PH_PIN)){
+        modo = MODO_PH;
+        Serial.println("PH");
+        falarSync(AUDIO_PH_SELECT);
+    }
+    else if(!digitalRead(BT_TEMP_PIN)){
+        modo = MODO_TEMP;
+        Serial.println("TEMP");
+        falarSync(AUDIO_TEMP_SELECT);
+    }
+    else if(!digitalRead(BT_IDSOL_PIN)){
+        modo = MODO_IDSOL;
+        Serial.println("IDSOL");
+        falarSync(AUDIO_IDSOL_SELECT);
+    }
     else if(!digitalRead(BT_PLAY_PIN)){
         digitalWrite(LED_PIN,LOW);
 
