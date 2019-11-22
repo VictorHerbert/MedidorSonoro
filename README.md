@@ -2,7 +2,7 @@
 Medidor sonoro que integra pH-metro, termômetro e identificador de soluções eletrolíticas
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/VictorHerbert/MedidorSonoro/master/Images/sketch1.png" alt="Logo"/>
+  <img src="https://raw.githubusercontent.com/VictorHerbert/MedidorSonoro/master/Resources/Images/sketch1.png" alt="Logo"/>
 </p>
 
 

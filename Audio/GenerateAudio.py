@@ -23,7 +23,7 @@ class DFPlayerMiniAudioGen:
 
 
 falas = ['e','ponto','conduz','não conduz','Medição de PH','Medição de temperatura','Identificador de soluções eletrolíticas','O ph é','A temperatura é','Graus Celsius','Dispositivo pronto para uso']
-path = 'C:\\Users\\victo\\Desktop\\Files\\'
+path = 'Files\\'
 
 
 audioGen = DFPlayerMiniAudioGen()
