@@ -13,7 +13,7 @@
 #include "Thermistor.h"
 
 //--------------------------
-Thermistor::Thermistor(int pin) {
+Thermistor::Thermistor(int pin, float A = 0.001129148, float B = 0.000234125, float C = 0.0000000876741) {
   _pin = pin;
 }
 
@@ -34,7 +34,7 @@ double Thermistor::getTemp() {
   /*    where A = 0.001129148, B = 0.000234125 and C = 8.76741E-08	*/
   /******************************************************************/
   Temp = log(Resistance);
-  Temp = 1 / (0.001129148 + (0.000234125 * Temp) + (0.0000000876741 * Temp * Temp * Temp));
+  Temp = 1 / (A + (B * Temp) + (C * Temp * Temp * Temp));
   Temp = Temp - 273.15;  // Convert Kelvin to Celsius
 
   /* - TESTING OUTPUT - remove lines with * to get serial print of data
