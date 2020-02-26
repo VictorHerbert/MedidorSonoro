@@ -7,7 +7,7 @@
 #include "DFRobotDFPlayerMini.h"
 #include "Definicoes.cpp";
 #include "Thermistor.h";
-#include "SMA.hpp"
+#include "SMA.hpp";
 
 ///////////////////////////////////////////////////////////////////////////////
 //                    Instâncias de objetos auxiliares                      //
@@ -28,24 +28,27 @@ DFRobotDFPlayerMini player;
 #define TEMP_MEDIA_MOVEL_COUNT 100
 #define PH_MEDIA_MOVEL_COUNT 50
 
-Thermistor term(TERM_PIN);
+Thermistor term(TERM_PIN, STEINHART_A, STEINHART_B, STEINHART_C);
 SMA filtroTemp(TEMP_MEDIA_MOVEL_COUNT);
 SMA filtroPH(PH_MEDIA_MOVEL_COUNT);
 
 float temp;
 float ph;
 bool conduz;
+float condutancia;
 
 bool estaConduzindo(){
-    return !digitalRead(IDSOL_PIN);
+    condutancia = analogRead(IDSOL_PIN);
+    return  condutancia < LIMIAR_CONDUZ;
 }
 
 float lerTemperatura(){
     return filtroTemp.updateSamples(term.getTemp());
+    //return filtroTemp.updateSamples(analogRead(TERM_PIN));
 }
 
 float lerPH(){
-    return filtroPH.updateSamples(34.16 - (0.03315 * analogRead(PH_PIN)));
+    return filtroPH.updateSamples( getPH( analogRead(PH_PIN) ) );
 }
 
 void atualizaSensores(){
@@ -89,6 +92,12 @@ unsigned long currentLCDMillis = millis();
 void atualizaLCD(){
     currentLCDMillis = millis();
     if(currentLCDMillis - previousLCDMillis <= LCD_update_time) return;
+
+    Serial.print(temp);
+    Serial.print(" ");
+    Serial.print(analogRead(TERM_PIN));
+    Serial.print(" ");
+    Serial.println(condutancia);
     
     previousLCDMillis = millis();
     
@@ -167,7 +176,7 @@ void setup() {
     Serial.begin(115200);
     Serial.println("Incializando...");
     
-    pinMode(IDSOL_PIN,INPUT_PULLUP);
+    //pinMode(IDSOL_PIN,INPUT);
     pinMode(BT_PH_PIN,INPUT_PULLUP);
     pinMode(BT_TEMP_PIN,INPUT_PULLUP);
     pinMode(BT_IDSOL_PIN,INPUT_PULLUP);
@@ -180,6 +189,7 @@ void setup() {
         
     delay(1000);    
     Serial.println("Inicializado");
+    
     
 }
 

@@ -13,8 +13,11 @@
 #include "Thermistor.h"
 
 //--------------------------
-Thermistor::Thermistor(int pin, float A = 0.001129148, float B = 0.000234125, float C = 0.0000000876741) {
+Thermistor::Thermistor(int pin, float _A, float _B, float _C) {
   _pin = pin;
+  A = _A;
+  B = _B;
+  C = _C;
 }
 
 //--------------------------

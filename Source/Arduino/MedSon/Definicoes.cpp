@@ -1,6 +1,21 @@
 #include "Arduino.h"
 
 ///////////////////////////////////////////////////////////////////////////////
+//                          Constantes                               //
+/////////////////////////////////////////////////////////////////////////////
+
+#define LIMIAR_CONDUZ 40
+
+#define STEINHART_A 0.001129148
+#define STEINHART_B 0.000234125
+#define STEINHART_C 0.0000000876741
+
+#define PH_A -0.0232f
+#define PH_B 25.985f
+
+#define getPH(x) PH_A*x+PH_B
+
+///////////////////////////////////////////////////////////////////////////////
 //                          Modos de operação                               //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -36,9 +51,13 @@
 /////////////////////////////////////////////////////////////////////////////
 
 //Sensores
-#define PH_PIN A1    //Analog IN
-#define TERM_PIN A0  //Analog IN
-#define IDSOL_PIN A4 //Digital IN
+//#define PH_PIN A1    //Analog IN
+//#define TERM_PIN A0  //Analog IN
+//#define IDSOL_PIN A4 //Digital IN
+
+#define PH_PIN A4   //Analog IN
+#define TERM_PIN A1  //Analog IN
+#define IDSOL_PIN A7 //Digital IN
 
 //Botões
 #define BT_PH_PIN 10
